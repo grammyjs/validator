@@ -1,0 +1,42 @@
+{
+    "name": "@grammyjs/validator",
+    "description": "Validation logic for Telegram Web Bots and Login Widgets",
+    "version": "0.1.0",
+    "author": "KnorpelSenf",
+    "license": "MIT",
+    "engines": {
+        "node": "^12.20.0 || >=14.13.1"
+    },
+    "homepage": "https://github.com/grammyjs/validator",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/grammyjs/validator"
+    },
+    "scripts": {
+        "prepare": "npm run backport",
+        "cache": "deno cache src/mod.ts",
+        "lint": "deno lint --config deno.jsonc",
+        "fmt": "deno fmt --config deno.jsonc",
+        "test": "deno test ./test/",
+        "backport": "deno2node tsconfig.json"
+    },
+    "devDependencies": {
+        "@types/node": "^12.20.47",
+        "deno2node": "^1.3.0"
+    },
+    "files": [
+        "out/"
+    ],
+    "main": "./out/mod.js",
+    "types": "./out/mod.d.ts",
+    "keywords": [
+        "telegram",
+        "web",
+        "bot",
+        "api",
+        "grammy",
+        "login",
+        "widget",
+        "validation"
+    ]
+}
