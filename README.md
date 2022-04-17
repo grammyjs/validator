@@ -18,7 +18,7 @@ This package solves two problems at once:
 ### Web Bots: Validation
 
 Web Bots can get access to `window.Telegram.WebApp.initData` which must be sent to the server for validation.
-The string value of `initData` is a query string that you can simple append to a URL to fetch.
+The string value of `initData` is a query string that you can simply append to a URL to fetch.
 Example:
 
 ```ts
