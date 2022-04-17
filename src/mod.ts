@@ -23,6 +23,5 @@ function compareHmac(
         .sort()
         .map((k) => `${k}=${data[k]}`)
         .join("\n");
-    console.log(hmacSha256Hex(secretKey, dataCheckString));
     return hash === hmacSha256Hex(secretKey, dataCheckString);
 }
