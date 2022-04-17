@@ -6,12 +6,13 @@
 
 This package solves two problems at once:
 
-- [Validating data received via Web Apps for a Telegram Bot](https://core.telegram.org/bots/webapps#validating-data-received-via-the-web-app)
-- [Checking authorization data for Telegram Login Widget](https://core.telegram.org/widgets/login#checking-authorization)
+- [Validating data received via **Web Apps for a Telegram Bot**](https://core.telegram.org/bots/webapps#validating-data-received-via-the-web-app)
+- [Checking authorization data for **Telegram Login Widget**](https://core.telegram.org/widgets/login#checking-authorization)
 
 ## How to use
 
 **Deno**: import from this URL: `https://deno.land/x/grammy_validator/mod.ts`
+
 **Node.js**: `npm install @grammyjs/validator`
 
 ### Web Bots: Validation
