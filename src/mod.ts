@@ -1,5 +1,8 @@
 import { hmacSha256, hmacSha256Hex, sha256 } from "./deps.deno.ts";
 
+export { parseWebAppInitData } from "./web-app-init-data";
+export type { WebAppInitData, WebAppUser, WebAppChat } from "./web-app-init-data";
+
 export function checkSignature(
     token: string,
     { hash, ...data }: Record<string, string>,

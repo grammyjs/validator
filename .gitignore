@@ -22,3 +22,6 @@ package-lock.json
 
 # Build output
 out/
+
+# WebStorm
+/.idea/
