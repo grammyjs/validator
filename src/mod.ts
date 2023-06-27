@@ -6,7 +6,7 @@ const payloadKeys = ["id", "hash", "auth_date", "username", "last_name", "photo_
 
 export function checkSignature(token: string, { hash, ...data }: Payload) {
   const secretKey = sha256(token);
-  if (!hash) throw new Error("No hash provided");
+  if (!hash) return false;
   return compareHmac(secretKey, `${hash}`, data);
 }
 
