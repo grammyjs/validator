@@ -10,9 +10,21 @@ export function checkSignature(token: string, { hash, ...data }: Payload) {
   return compareHmac(secretKey, `${hash}`, data);
 }
 
-export function validateWebAppData(token: string, initData: URLSearchParams) {
+/**
+ * @param maxAge Maximum time in seconds passed since `auth_date` in order to
+ * consider the `initData` valid. Use `0` to disable.
+ */
+export function validateWebAppData(token: string, initData: URLSearchParams, maxAge: number) {
   const secretKey = hmacSha256("WebAppData", token);
   const { hash, ...data } = Object.fromEntries(initData.entries());
+
+  if (maxAge) {
+    const authDate = Number(data.auth_date);
+    if (isNaN(authDate)) return false;
+    const age = (Date.now() / 1000) - authDate;
+    if (age > maxAge) return false;
+  }
+
   return compareHmac(secretKey, hash, data);
 }
 
