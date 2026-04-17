@@ -4,9 +4,10 @@
 
 ## What is this
 
-This package solves two problems at once:
+This package solves three problems at once:
 
 - [Validating data received via **Web Apps for a Telegram Bot**](https://core.telegram.org/bots/webapps#validating-data-received-via-the-web-app)
+- [Validating data for **third-party use**](https://core.telegram.org/bots/webapps#validating-data-for-third-party-use) (no bot token required)
 - [Checking authorization data for **Telegram Login Widget**](https://core.telegram.org/widgets/login#checking-authorization)
 
 ## How to use
@@ -38,6 +39,27 @@ if (validateWebAppData(token, url.searchParams)) { // pass `URLSearchParams` obj
     // data is from Telegram
 }
 ```
+
+### Web Bots: Third-party Validation
+
+Telegram also signs `initData` with an Ed25519 signature, so any third party can
+verify it without the bot token — just the bot's numeric id. Use this when the
+service processing `initData` is not the bot owner.
+
+```ts
+import { validateThirdPartyWebAppData } from "./src/mod.ts";
+
+const botId = 1234567890; // your bot's numeric id
+const url = ctx.request.url;
+
+if (await validateThirdPartyWebAppData(botId, url.searchParams)) {
+    // data is from Telegram
+}
+```
+
+Pass `{ test: true }` as the third argument to validate data from the Telegram
+test environment. The function does not check `auth_date` freshness — compare
+it against the current time yourself to reject stale data.
 
 ### Login Widget: Authorization
 
