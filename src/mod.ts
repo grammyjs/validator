@@ -52,9 +52,7 @@ function compareHashes(expected: string, actual: string) {
     let hasDifference = 0;
     // always iterate all bytes
     for (let i = 0; i < actualBytes.length; i++) {
-        const expectedByte = expectedBytes[i]
-        const actualByte = actualBytes[i];
-        hasDifference |= expectedByte ^ actualByte;
+        hasDifference |= expectedBytes[i] ^ actualBytes[i];
     }
     return hasDifference === 0;
 }
