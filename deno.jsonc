@@ -1,7 +1,11 @@
 {
+    "lock": false,
     "fmt": {
         "indentWidth": 4,
         "proseWrap": "preserve"
     },
-    "exclude": ["./node_modules/", "./out/", "./package-lock.json"]
+    "exclude": ["./node_modules/", "./out/", "./package-lock.json"],
+    "imports": {
+        "@std/assert": "jsr:@std/assert@^1.0.19"
+    }
 }
