@@ -5,7 +5,7 @@
     "author": "KnorpelSenf",
     "license": "MIT",
     "engines": {
-        "node": "^12.20.0 || >=14.13.1"
+        "node": ">=24.0.0"
     },
     "homepage": "https://github.com/grammyjs/validator",
     "repository": {
@@ -17,7 +17,7 @@
         "backport": "deno2node"
     },
     "devDependencies": {
-        "@types/node": "^12.20.47",
+        "@types/node": "^24.0.0",
         "deno2node": "^1.16.0"
     },
     "files": [
