@@ -2,33 +2,40 @@ export type Payload = Record<string, string | number | undefined>;
 
 const enc = new TextEncoder();
 const WEB_APP_DATA = enc.encode("WebAppData");
+const SHA256_HEX = /^[0-9a-f]{64}$/i;
 
 export async function checkSignature(
     token: string,
     { hash, ...data }: Payload,
 ) {
+    const expected = hexToBytes(hash);
+    if (!expected) return false;
     const secretKey = await sha256(token);
-    if (!hash) return false;
-    return compareHmac(secretKey, `${hash}`, data);
+    return compareHmac(secretKey, expected, data);
 }
 
 export async function validateWebAppData(
     token: string,
     initData: URLSearchParams,
 ) {
-    const secretKey = await hmacSha256(WEB_APP_DATA, token);
     const { hash, ...data } = Object.fromEntries(initData.entries());
-    return compareHmac(secretKey, hash, data);
+    const expected = hexToBytes(hash);
+    if (!expected) return false;
+    const secretKey = await hmacSha256(WEB_APP_DATA, token);
+    return compareHmac(secretKey, expected, data);
 }
 
-async function compareHmac(secretKey: Uint8Array, hash: string, data: Payload) {
+async function compareHmac(
+    secretKey: Uint8Array,
+    expected: Uint8Array,
+    data: Payload,
+) {
     const dataCheckString = Object.keys(data)
         .filter((k) => typeof data[k] !== "undefined")
         .sort()
         .map((k) => `${k}=${data[k]}`)
         .join("\n");
 
-    const expected = hexToBytes(hash);
     return compareHashes(
         expected,
         await hmacSha256(secretKey, dataCheckString),
@@ -73,8 +80,8 @@ function compareHashes(expected: Uint8Array, actual: Uint8Array) {
 }
 
 /** convert hex string to Uint8Array */
-function hexToBytes(hex: string): Uint8Array {
-    if (hex.length % 2 != 0) return new Uint8Array(0);
+function hexToBytes(hex: unknown): Uint8Array | undefined {
+    if (typeof hex !== "string" || !SHA256_HEX.test(hex)) return undefined;
     const bytes = new Uint8Array(hex.length / 2);
     for (let i = 0; i < bytes.length; i++) {
         bytes[i] = Number.parseInt(hex.substring(i * 2, i * 2 + 2), 16);
