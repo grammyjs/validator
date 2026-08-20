@@ -25,6 +25,24 @@ const telegramPublicKeyPromises: Partial<
     Record<ThirdPartyEnvironment, Promise<CryptoKey>>
 > = {};
 
+export interface Validator {
+    checkSignature(
+        payload: Payload,
+        options?: ValidationOptions,
+    ): Promise<boolean>;
+    validateWebAppData(
+        initData: URLSearchParams,
+        options: ValidationOptions,
+    ): Promise<boolean>;
+}
+
+export function createValidator(token: string): Validator {
+    return {
+        checkSignature: (...args) => checkSignature(token, ...args),
+        validateWebAppData: (...args) => validateWebAppData(token, ...args),
+    };
+}
+
 export async function checkSignature(
     token: string,
     { hash, ...data }: Payload,
@@ -48,6 +66,20 @@ export async function validateWebAppData(
     const secretKey = await hmacSha256(WEB_APP_DATA, token);
     if (!await compareHmac(secretKey, expected, data)) return false;
     return validateMaxAge(data.auth_date, options.maxAgeSeconds);
+}
+
+export interface ThirdPartyValidator {
+    validateWebAppData(
+        initData: URLSearchParams,
+        options: ThirdPartyValidationOptions,
+    ): Promise<boolean>;
+}
+
+export function createThirdPartyValidator(botId: number): ThirdPartyValidator {
+    return {
+        validateWebAppData: (...args) =>
+            validateWebAppDataThirdParty(botId, ...args),
+    };
 }
 
 export async function validateWebAppDataThirdParty(
