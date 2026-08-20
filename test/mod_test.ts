@@ -1,8 +1,9 @@
-import { assert, assertEquals } from "@std/assert/equals";
+import { assert, assertEquals } from "@std/assert";
 import {
     checkSignature,
     type Payload,
     validateWebAppData,
+    validateWebAppDataThirdParty,
     type ValidationOptions,
 } from "../src/mod.ts";
 
@@ -129,10 +130,10 @@ async function sha256(value: string) {
     );
 }
 
-async function hmacSha256(key: Uint8Array, value: string) {
+async function hmacSha256(key: Uint8Array<ArrayBuffer>, value: string) {
     const cryptoKey = await crypto.subtle.importKey(
         "raw",
-        new Uint8Array(key),
+        key,
         { name: "HMAC", hash: "SHA-256" },
         false,
         ["sign"],
@@ -281,3 +282,163 @@ for (const fixture of fixtures) {
         );
     });
 }
+
+const THIRD_PARTY_BOT_ID = 7342037359;
+const THIRD_PARTY_INIT_DATA =
+    "user=%7B%22id%22%3A279058397%2C%22first_name%22%3A%22Vladislav%20%2B%20-%20%3F%20%5C%2F%22%2C%22last_name%22%3A%22Kibenko%22%2C%22username%22%3A%22vdkfrost%22%2C%22language_code%22%3A%22ru%22%2C%22is_premium%22%3Atrue%2C%22allows_write_to_pm%22%3Atrue%2C%22photo_url%22%3A%22https%3A%5C%2F%5C%2Ft.me%5C%2Fi%5C%2Fuserpic%5C%2F320%5C%2F4FPEE4tmP3ATHa57u6MqTDih13LTOiMoKoLDRG4PnSA.svg%22%7D&chat_instance=8134722200314281151&chat_type=private&auth_date=1733584787&hash=2174df5b000556d044f3f020384e879c8efcab55ddea2ced4eb752e93e7080d6&signature=zL-ucjNyREiHDE8aihFwpfR9aggP2xiAo3NSpfe-p7IbCisNlDKlo7Kb6G4D0Ao2mBrSgEk4maLSdv6MLIlADQ";
+
+function thirdPartyInitData() {
+    return new URLSearchParams(THIRD_PARTY_INIT_DATA);
+}
+
+Deno.test("validates third-party Mini App data with the prod key", async () => {
+    assertEquals(
+        await validateWebAppDataThirdParty(
+            THIRD_PARTY_BOT_ID,
+            thirdPartyInitData(),
+        ),
+        true,
+    );
+    assertEquals(
+        await validateWebAppDataThirdParty(
+            THIRD_PARTY_BOT_ID,
+            thirdPartyInitData(),
+            { environment: "prod" },
+        ),
+        true,
+    );
+});
+
+Deno.test("accepts padded and unpadded base64url signatures", async () => {
+    const padded = thirdPartyInitData();
+    padded.set("signature", `${padded.get("signature")}==`);
+
+    assertEquals(
+        await validateWebAppDataThirdParty(
+            THIRD_PARTY_BOT_ID,
+            thirdPartyInitData(),
+        ),
+        true,
+        "unpadded",
+    );
+    assertEquals(
+        await validateWebAppDataThirdParty(THIRD_PARTY_BOT_ID, padded),
+        true,
+        "padded",
+    );
+});
+
+Deno.test("rejects third-party data that does not match the signature", async () => {
+    const alteredData = thirdPartyInitData();
+    alteredData.set("chat_type", "group");
+
+    const alteredSignature = thirdPartyInitData();
+    const signature = alteredSignature.get("signature")!;
+    alteredSignature.set(
+        "signature",
+        `${signature.startsWith("A") ? "B" : "A"}${signature.slice(1)}`,
+    );
+
+    assertEquals(
+        await validateWebAppDataThirdParty(
+            THIRD_PARTY_BOT_ID + 1,
+            thirdPartyInitData(),
+        ),
+        false,
+        "bot ID",
+    );
+    assertEquals(
+        await validateWebAppDataThirdParty(THIRD_PARTY_BOT_ID, alteredData),
+        false,
+        "signed field",
+    );
+    assertEquals(
+        await validateWebAppDataThirdParty(
+            THIRD_PARTY_BOT_ID,
+            alteredSignature,
+        ),
+        false,
+        "signature",
+    );
+    assertEquals(
+        await validateWebAppDataThirdParty(
+            THIRD_PARTY_BOT_ID,
+            thirdPartyInitData(),
+            { environment: "test" },
+        ),
+        false,
+        "environment",
+    );
+});
+
+Deno.test("excludes hash from third-party signature verification", async () => {
+    const data = thirdPartyInitData();
+    data.set("hash", "not-used-by-third-party-validation");
+    assertEquals(
+        await validateWebAppDataThirdParty(THIRD_PARTY_BOT_ID, data),
+        true,
+    );
+});
+
+Deno.test("rejects missing and malformed Ed25519 signatures", async () => {
+    const signature = thirdPartyInitData().get("signature")!;
+    const invalidSignatures = [
+        undefined,
+        "",
+        signature.slice(0, -1),
+        `${signature}=`,
+        `${signature}===`,
+        `${signature.slice(0, -1)}!`,
+        `${signature.slice(0, -1)}B`,
+    ];
+
+    for (const invalidSignature of invalidSignatures) {
+        const data = thirdPartyInitData();
+        if (invalidSignature === undefined) data.delete("signature");
+        else data.set("signature", invalidSignature);
+        assertEquals(
+            await validateWebAppDataThirdParty(THIRD_PARTY_BOT_ID, data),
+            false,
+            String(invalidSignature),
+        );
+    }
+});
+
+Deno.test("rejects invalid bot IDs", async () => {
+    for (
+        const botId of [
+            0,
+            -1,
+            1.5,
+            Number.NaN,
+            Number.POSITIVE_INFINITY,
+            Number.MAX_SAFE_INTEGER + 1,
+        ]
+    ) {
+        assertEquals(
+            await validateWebAppDataThirdParty(botId, thirdPartyInitData()),
+            false,
+            String(botId),
+        );
+    }
+});
+
+Deno.test("third-party validation supports maxAgeSeconds", async () => {
+    assertEquals(
+        await validateWebAppDataThirdParty(
+            THIRD_PARTY_BOT_ID,
+            thirdPartyInitData(),
+        ),
+        true,
+        "age check omitted",
+    );
+    assertEquals(
+        await validateWebAppDataThirdParty(
+            THIRD_PARTY_BOT_ID,
+            thirdPartyInitData(),
+            { maxAgeSeconds: 0 },
+        ),
+        false,
+        "historical data",
+    );
+});

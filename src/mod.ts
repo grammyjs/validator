@@ -4,9 +4,26 @@ export interface ValidationOptions {
     maxAgeSeconds?: number;
 }
 
+export interface ThirdPartyValidationOptions extends ValidationOptions {
+    environment?: "prod" | "test";
+}
+
 const enc = new TextEncoder();
 const WEB_APP_DATA = enc.encode("WebAppData");
 const SHA256_HEX = /^[0-9a-f]{64}$/i;
+const ED25519_SIGNATURE_BASE64URL = /^[A-Za-z0-9_-]{85}[AQgw](?:==)?$/;
+const TELEGRAM_PUBLIC_KEYS = {
+    prod: hexToBytes(
+        "e7bf03a2fa4602af4580703d88dda5bb59f32ed8b02a56c187fe7d34caed242d",
+    )!,
+    test: hexToBytes(
+        "40055058a4ee38156a06562e52eece92a771bcd8346a8c4615cb7376eddf72ec",
+    )!,
+} as const;
+type ThirdPartyEnvironment = keyof typeof TELEGRAM_PUBLIC_KEYS;
+const telegramPublicKeyPromises: Partial<
+    Record<ThirdPartyEnvironment, Promise<CryptoKey>>
+> = {};
 
 export async function checkSignature(
     token: string,
@@ -33,6 +50,30 @@ export async function validateWebAppData(
     return validateMaxAge(data.auth_date, options.maxAgeSeconds);
 }
 
+export async function validateWebAppDataThirdParty(
+    botId: number,
+    initData: URLSearchParams,
+    options: ThirdPartyValidationOptions = {},
+) {
+    const environment = options.environment ?? "prod";
+    const { hash: _, signature, ...data } = Object.fromEntries(
+        initData.entries(),
+    );
+    const signatureBytes = base64UrlToBytes(signature);
+    if (!signatureBytes) return false;
+
+    const message = `${botId}:WebAppData\n${dataCheckString(data)}`;
+    const publicKey = await getTelegramPublicKey(environment);
+    const valid = await crypto.subtle.verify(
+        { name: "Ed25519" },
+        publicKey,
+        signatureBytes,
+        enc.encode(message),
+    );
+    if (!valid) return false;
+    return validateMaxAge(data.auth_date, options.maxAgeSeconds);
+}
+
 function validateMaxAge(
     authDate: string | number | undefined,
     maxAgeSeconds: number | undefined,
@@ -53,20 +94,49 @@ function validateMaxAge(
 }
 
 async function compareHmac(
-    secretKey: Uint8Array,
+    secretKey: Uint8Array<ArrayBuffer>,
     expected: Uint8Array,
     data: Payload,
 ) {
-    const dataCheckString = Object.keys(data)
+    return compareHashes(
+        expected,
+        await hmacSha256(secretKey, dataCheckString(data)),
+    );
+}
+
+function dataCheckString(data: Payload) {
+    return Object.keys(data)
         .filter((k) => typeof data[k] !== "undefined")
         .sort()
         .map((k) => `${k}=${data[k]}`)
         .join("\n");
+}
 
-    return compareHashes(
-        expected,
-        await hmacSha256(secretKey, dataCheckString),
+function getTelegramPublicKey(environment: ThirdPartyEnvironment) {
+    return telegramPublicKeyPromises[environment] ??= crypto.subtle.importKey(
+        "raw",
+        TELEGRAM_PUBLIC_KEYS[environment],
+        { name: "Ed25519" },
+        false,
+        ["verify"],
     );
+}
+
+function base64UrlToBytes(value: unknown): Uint8Array<ArrayBuffer> | undefined {
+    if (typeof value !== "string" || !ED25519_SIGNATURE_BASE64URL.test(value)) {
+        return undefined;
+    }
+
+    const unpadded = value.endsWith("==") ? value.slice(0, -2) : value;
+    const base64 = unpadded.replaceAll("-", "+").replaceAll("_", "/") +
+        "==";
+    try {
+        const binary = atob(base64);
+        const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+        return bytes.length === 64 ? bytes : undefined;
+    } catch {
+        return undefined;
+    }
 }
 
 async function sha256(payload: string) {
@@ -77,10 +147,10 @@ async function sha256(payload: string) {
     return new Uint8Array(digest);
 }
 
-async function hmacSha256(key: Uint8Array, msg: string) {
+async function hmacSha256(key: Uint8Array<ArrayBuffer>, msg: string) {
     const cryptoKey = await crypto.subtle.importKey(
         "raw",
-        new Uint8Array(key),
+        key,
         { name: "HMAC", hash: "SHA-256" },
         false,
         ["sign"],
@@ -107,7 +177,7 @@ function compareHashes(expected: Uint8Array, actual: Uint8Array) {
 }
 
 /** convert hex string to Uint8Array */
-function hexToBytes(hex: unknown): Uint8Array | undefined {
+function hexToBytes(hex: unknown): Uint8Array<ArrayBuffer> | undefined {
     if (typeof hex !== "string" || !SHA256_HEX.test(hex)) return undefined;
     const bytes = new Uint8Array(hex.length / 2);
     for (let i = 0; i < bytes.length; i++) {

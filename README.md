@@ -45,6 +45,28 @@ if (
 }
 ```
 
+### Web Bots: Third-Party Validation
+
+Third parties can validate Mini App data without access to the bot token by using the bot ID and Telegram's public key.
+
+```ts
+import { validateWebAppDataThirdParty } from "./src/mod.ts";
+
+const botId = 123456789;
+const url = ctx.request.url;
+
+if (
+    await validateWebAppDataThirdParty(botId, url.searchParams, {
+        environment: "prod",
+        maxAgeSeconds: 300,
+    })
+) {
+    // data is from Telegram
+}
+```
+
+The environment defaults to `"prod"`. Pass `{ environment: "test" }` when validating data from Telegram's test environment.
+
 ### Login Widget: Authorization
 
 You can also check the signature if you are using a Telegram Login Widget.
@@ -69,4 +91,4 @@ if (await checkSignature(token, payload, { maxAgeSeconds: 300 })) {
 }
 ```
 
-Both validation functions accept the optional `maxAgeSeconds` setting to prevent replaying old authorization data. When enabled, validation also fails if `auth_date` is missing, malformed, or in the future. Omit the setting to validate only the signature without checking the `auth_date`.
+All validation functions accept the optional `maxAgeSeconds` setting to prevent replaying old authorization data. When enabled, validation also fails if `auth_date` is missing, malformed, or in the future. Omit the setting to validate only the signature without checking the `auth_date`.
