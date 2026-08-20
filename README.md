@@ -34,7 +34,7 @@ import { validateWebAppData } from "./src/mod.ts";
 const token = ""; // <-- put your bot token here
 const url = ctx.request.url; // get `URL` object from your web framework
 
-if (validateWebAppData(token, url.searchParams)) { // pass `URLSearchParams` object
+if (await validateWebAppData(token, url.searchParams)) { // pass `URLSearchParams` object
     // data is from Telegram
 }
 ```
@@ -58,7 +58,7 @@ const payload = {
     hash: "87e5a7e644d0ee362334d92bc8ecc981ca11ffc11eca809505",
 };
 
-if (checkSignature(token, payload)) {
+if (await checkSignature(token, payload)) {
     // data is from Telegram
 }
 ```
