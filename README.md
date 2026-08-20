@@ -29,14 +29,14 @@ await fetch(url);
 This library helps you validate the resulting search query in the backend.
 
 ```ts
-import { validateWebAppData } from "./src/mod.ts";
+import { createValidator } from "./src/mod.ts";
 
 const token = ""; // <-- put your bot token here
+const validator = createValidator(token);
 const url = ctx.request.url; // get `URL` object from your web framework
 
 if (
-    await validateWebAppData(
-        token,
+    await validator.validateWebAppData(
         url.searchParams, // pass `URLSearchParams` object
         { maxAgeSeconds: 300 },
     )
@@ -50,14 +50,15 @@ if (
 Third parties can validate Mini App data without access to the bot token by using the bot ID and Telegram's public key.
 
 ```ts
-import { validateWebAppDataThirdParty } from "./src/mod.ts";
+import { createThirdPartyValidator } from "./src/mod.ts";
 
 const botId = 123456789;
+const validator = createThirdPartyValidator(botId);
 const url = ctx.request.url;
 
 if (
-    await validateWebAppDataThirdParty(botId, url.searchParams, {
-        environment: "prod",
+    await validator.validateWebAppData(url.searchParams, {
+        environment: "prod", // also the default
         maxAgeSeconds: 300,
     })
 ) {
