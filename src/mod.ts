@@ -1,5 +1,9 @@
 export type Payload = Record<string, string | number | undefined>;
 
+export interface ValidationOptions {
+    maxAgeSeconds?: number;
+}
+
 const enc = new TextEncoder();
 const WEB_APP_DATA = enc.encode("WebAppData");
 const SHA256_HEX = /^[0-9a-f]{64}$/i;
@@ -7,22 +11,45 @@ const SHA256_HEX = /^[0-9a-f]{64}$/i;
 export async function checkSignature(
     token: string,
     { hash, ...data }: Payload,
+    options: ValidationOptions = {},
 ) {
     const expected = hexToBytes(hash);
     if (!expected) return false;
     const secretKey = await sha256(token);
-    return compareHmac(secretKey, expected, data);
+    if (!await compareHmac(secretKey, expected, data)) return false;
+    return validateMaxAge(data.auth_date, options.maxAgeSeconds);
 }
 
 export async function validateWebAppData(
     token: string,
     initData: URLSearchParams,
+    options: ValidationOptions = {},
 ) {
     const { hash, ...data } = Object.fromEntries(initData.entries());
     const expected = hexToBytes(hash);
     if (!expected) return false;
     const secretKey = await hmacSha256(WEB_APP_DATA, token);
-    return compareHmac(secretKey, expected, data);
+    if (!await compareHmac(secretKey, expected, data)) return false;
+    return validateMaxAge(data.auth_date, options.maxAgeSeconds);
+}
+
+function validateMaxAge(
+    authDate: string | number | undefined,
+    maxAgeSeconds: number | undefined,
+) {
+    if (maxAgeSeconds === undefined) return true;
+
+    if (
+        (typeof authDate === "string" && !/^\d+$/.test(authDate)) ||
+        (typeof authDate !== "string" && typeof authDate !== "number")
+    ) {
+        return false;
+    }
+    const timestamp = Number(authDate);
+    if (!Number.isSafeInteger(timestamp) || timestamp < 0) return false;
+
+    const now = Math.floor(Date.now() / 1000);
+    return timestamp <= now && now <= timestamp + maxAgeSeconds;
 }
 
 async function compareHmac(

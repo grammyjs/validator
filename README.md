@@ -34,7 +34,13 @@ import { validateWebAppData } from "./src/mod.ts";
 const token = ""; // <-- put your bot token here
 const url = ctx.request.url; // get `URL` object from your web framework
 
-if (await validateWebAppData(token, url.searchParams)) { // pass `URLSearchParams` object
+if (
+    await validateWebAppData(
+        token,
+        url.searchParams, // pass `URLSearchParams` object
+        { maxAgeSeconds: 300 },
+    )
+) {
     // data is from Telegram
 }
 ```
@@ -58,7 +64,9 @@ const payload = {
     hash: "87e5a7e644d0ee362334d92bc8ecc981ca11ffc11eca809505",
 };
 
-if (await checkSignature(token, payload)) {
+if (await checkSignature(token, payload, { maxAgeSeconds: 300 })) {
     // data is from Telegram
 }
 ```
+
+Both validation functions accept the optional `maxAgeSeconds` setting to prevent replaying old authorization data. When enabled, validation also fails if `auth_date` is missing, malformed, or in the future. Omit the setting to validate only the signature without checking the `auth_date`.
