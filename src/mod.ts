@@ -32,7 +32,7 @@ export interface Validator {
     ): Promise<boolean>;
     validateWebAppData(
         initData: URLSearchParams,
-        options: ValidationOptions,
+        options?: ValidationOptions,
     ): Promise<boolean>;
 }
 
@@ -71,7 +71,7 @@ export async function validateWebAppData(
 export interface ThirdPartyValidator {
     validateWebAppData(
         initData: URLSearchParams,
-        options: ThirdPartyValidationOptions,
+        options?: ThirdPartyValidationOptions,
     ): Promise<boolean>;
 }
 
