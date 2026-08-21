@@ -380,6 +380,36 @@ Deno.test("excludes hash from third-party signature verification", async () => {
     );
 });
 
+Deno.test(
+    "rejects duplicate third-party fields supplied by an untrusted first party",
+    async () => {
+        const genuine = thirdPartyInitData();
+        const signedUser = genuine.get("user")!;
+        const injectedUser = JSON.stringify({
+            id: 666666666,
+            first_name: "Injected",
+        });
+
+        // A hostile first party can preserve the complete Telegram-signed
+        // payload while prepending a different value for a signed field.
+        const received = new URLSearchParams();
+        received.append("user", injectedUser);
+        for (const [key, value] of genuine) received.append(key, value);
+
+        // A third party naturally reusing the validated URLSearchParams reads
+        // the injected first value, whereas Object.fromEntries validates the
+        // genuine last value.
+        assertEquals(received.getAll("user"), [injectedUser, signedUser]);
+        assertEquals(received.get("user"), injectedUser);
+
+        assertEquals(
+            await validateWebAppDataThirdParty(THIRD_PARTY_BOT_ID, received),
+            false,
+            "duplicate signed fields must not validate",
+        );
+    },
+);
+
 Deno.test("rejects missing and malformed Ed25519 signatures", async () => {
     const signature = thirdPartyInitData().get("signature")!;
     const invalidSignatures = [
