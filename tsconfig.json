@@ -12,7 +12,7 @@
         "module": "commonjs",
         "outDir": "./out/",
         "skipLibCheck": true,
-        "target": "es2019"
+        "target": "es2021"
     },
     "include": ["src/"]
 }
