@@ -1,10 +1,20 @@
 {
     "lock": false,
+    "tasks": {
+        "ok": "deno fmt --check && deno lint && deno check && deno test",
+        "clean": "git clean -fX out test/cov_profile test/coverage coverage.lcov",
+        "coverage": "deno task clean && deno test --coverage=./test/cov_profile && echo 'Point your browser to test/cov_profile/html/index.html to see the test coverage report.'"
+    },
     "fmt": {
         "indentWidth": 4,
         "proseWrap": "preserve"
     },
-    "exclude": ["./node_modules/", "./out/", "./package-lock.json"],
+    "exclude": [
+        "./node_modules/",
+        "./out/",
+        "./package-lock.json",
+        "./test/cov_profile"
+    ],
     "imports": {
         "@std/assert": "jsr:@std/assert@^1.0.19"
     }
